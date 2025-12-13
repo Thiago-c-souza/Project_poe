@@ -44,8 +44,9 @@ class GameScene(Scene):
         self.camera = Camera(game.size)
         self.wall_rects = self._build_walls()
         self.enemies = self._spawn_enemies()
+        self.facing_direction = pygame.Vector2(1, 0)
         self.attack_cooldown = 0.0
-        self.attack_duration = 0.12
+        self.attack_duration = 0.1
         self.attack_timer = 0.0
         self.attack_range = PLAYER_SIZE + 24
         self.attack_damage = 12
@@ -72,6 +73,7 @@ class GameScene(Scene):
 
         if direction.length_squared() > 0:
             direction = direction.normalize()
+            self.facing_direction = direction
 
         movement = direction * self.speed * delta_time
         self.player_rect = move_with_collisions(
@@ -146,9 +148,7 @@ class GameScene(Scene):
         self.attack_timer = max(0.0, self.attack_timer - delta_time)
 
         if keys[pygame.K_SPACE] and self.attack_cooldown == 0:
-            attack_size = self.attack_range
-            attack_rect = pygame.Rect(0, 0, attack_size, attack_size)
-            attack_rect.center = self.player_rect.center
+            attack_rect = self._build_attack_rect()
             self.last_attack_rect = attack_rect
             self.attack_cooldown = 0.45
             self.attack_timer = self.attack_duration
@@ -158,4 +158,36 @@ class GameScene(Scene):
                     enemy.take_damage(self.attack_damage)
                     if not enemy.alive:
                         self.enemies.remove(enemy)
+
+    def _build_attack_rect(self) -> pygame.Rect:
+        """Cria um retângulo de ataque na direção em que o player está olhando."""
+
+        horizontal = abs(self.facing_direction.x) >= abs(self.facing_direction.y)
+
+        if horizontal:
+            attack_width = self.attack_range
+            attack_height = PLAYER_SIZE
+            offset = (PLAYER_SIZE // 2 + attack_width // 2)
+            if self.facing_direction.x < 0:
+                offset *= -1
+            center = (
+                self.player_rect.centerx + offset,
+                self.player_rect.centery,
+            )
+            attack_rect = pygame.Rect(0, 0, attack_width, attack_height)
+            attack_rect.center = center
+            return attack_rect
+
+        attack_width = PLAYER_SIZE
+        attack_height = self.attack_range
+        offset = (PLAYER_SIZE // 2 + attack_height // 2)
+        if self.facing_direction.y < 0:
+            offset *= -1
+        center = (
+            self.player_rect.centerx,
+            self.player_rect.centery + offset,
+        )
+        attack_rect = pygame.Rect(0, 0, attack_width, attack_height)
+        attack_rect.center = center
+        return attack_rect
 
