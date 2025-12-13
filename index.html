@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini ARPG Elemental</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Projeto inspirado em PoE</p>
+      <h1>Crie seu aventureiro elemental</h1>
+      <p class="lead">Escolha sua cor inicial, distribua pontos na árvore passiva e enfrente três mapas curtos.</p>
+    </div>
+    <div class="hero-card">
+      <p class="label">Resumo rápido</p>
+      <ul>
+        <li>3 classes: Vermelho, Azul e Verde</li>
+        <li>3 mapas com mobs normais, mágicos, raros e um chefe</li>
+        <li>Suba de nível, ganhe pontos e evolua na árvore</li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel" id="creation-section">
+      <div class="panel-header">
+        <div>
+          <p class="label">Passo 1</p>
+          <h2>Crie seu personagem</h2>
+        </div>
+        <span class="tag">Escolha a cor inicial</span>
+      </div>
+      <div class="grid classes">
+        <label class="class-card">
+          <input type="radio" name="class" value="red" checked />
+          <div>
+            <p class="label red">Vermelho</p>
+            <h3>Berserker das Brasas</h3>
+            <p>Dano físico e de fogo, início agressivo na árvore.</p>
+          </div>
+        </label>
+        <label class="class-card">
+          <input type="radio" name="class" value="blue" />
+          <div>
+            <p class="label blue">Azul</p>
+            <h3>Teurgo da Safira</h3>
+            <p>Foco em magia e controle elemental.</p>
+          </div>
+        </label>
+        <label class="class-card">
+          <input type="radio" name="class" value="green" />
+          <div>
+            <p class="label green">Verde</p>
+            <h3>Patrulheiro da Selva</h3>
+            <p>Velocidade, venenos e esquiva no início da árvore.</p>
+          </div>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="create-btn" class="primary">Criar personagem</button>
+        <p class="small" id="creation-status">Nenhum personagem criado ainda.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="sheet-section">
+      <div class="panel-header">
+        <div>
+          <p class="label">Passo 2</p>
+          <h2>Ficha e árvore passiva</h2>
+        </div>
+        <span class="tag" id="points-tag">Pontos: 0</span>
+      </div>
+      <div class="stats">
+        <div>
+          <p class="label">Nível</p>
+          <p class="stat-value" id="level-value">-</p>
+        </div>
+        <div>
+          <p class="label">Exp</p>
+          <p class="stat-value" id="xp-value">-</p>
+        </div>
+        <div>
+          <p class="label">Poder total</p>
+          <p class="stat-value" id="power-value">-</p>
+        </div>
+      </div>
+      <div class="tree" id="tree"></div>
+    </section>
+
+    <section class="panel" id="maps-section">
+      <div class="panel-header">
+        <div>
+          <p class="label">Passo 3</p>
+          <h2>Escolha um mapa</h2>
+        </div>
+        <span class="tag">3 encontros curtos</span>
+      </div>
+      <div class="map-grid" id="maps"></div>
+      <div class="actions">
+        <button id="run-map" class="primary" disabled>Iniciar mapa</button>
+        <p class="small">Cada encontro gera experiência; pontos de árvore surgem a cada nível.</p>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+
+  <div id="play-overlay" class="overlay hidden">
+    <div class="play-window">
+      <header class="play-header">
+        <div>
+          <p class="label" id="play-map-label">Mapa ativo</p>
+          <h3 id="play-map-title">-</h3>
+          <p class="muted" id="play-map-desc">Use WASD ou setas para andar. Barra de espaço para atacar.</p>
+        </div>
+        <button id="close-play" class="ghost">Sair</button>
+      </header>
+      <div class="play-meta">
+        <span class="tag" id="play-enemies-tag">Inimigos: 0</span>
+        <span class="tag" id="play-power-tag">Poder: 0</span>
+      </div>
+      <div class="play-area" id="play-area"></div>
+      <p class="muted small">Controles: WASD ou setas para mover. Espaço para atacar o inimigo mais próximo.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>Protótipo web simples para experimentar conceitos de PoE.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
