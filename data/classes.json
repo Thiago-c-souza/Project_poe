@@ -1,0 +1,5 @@
+{
+  "warrior": {"max_hp": 120, "max_mana": 40, "speed": 190, "skill": "cleave"},
+  "ranger":  {"max_hp": 90,  "max_mana": 60, "speed": 230, "skill": "piercing_arrow"},
+  "mage":    {"max_hp": 70,  "max_mana": 120,"speed": 210, "skill": "fireball"}
+}
