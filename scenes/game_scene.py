@@ -8,8 +8,8 @@ import random
 from core.camera import Camera
 from core.scene import Scene
 from entities.enemy import Enemy
+from entities.player import Player
 from entities.pickup import LootPickup
-from systems.collision import move_with_collisions
 
 TILE_SIZE = 48
 PLAYER_SIZE = 32
@@ -40,26 +40,17 @@ class GameScene(Scene):
 
     def __init__(self, game: "Game") -> None:
         super().__init__(game)
-        self.speed = 200
-        self.player_rect = pygame.Rect(0, 0, PLAYER_SIZE, PLAYER_SIZE)
-        self.player_rect.center = self._find_spawn_point()
+        self.player = Player(self._find_spawn_point(), size=PLAYER_SIZE, speed=200)
         self.camera = Camera(game.size)
         self.wall_rects = self._build_walls()
         self.enemies = self._spawn_enemies()
         self.pickups: list[LootPickup] = []
-        self.facing_direction = pygame.Vector2(1, 0)
-        self.attack_cooldown = 0.0
-        self.attack_duration = 0.1
-        self.attack_timer = 0.0
-        self.attack_range = PLAYER_SIZE + 24
-        self.attack_damage = 12
-        self.last_attack_rect: pygame.Rect | None = None
         self.coins_collected = 0
         self.items_collected = 0
         self.font = pygame.font.SysFont(None, 22)
 
     def enter(self) -> None:
-        self.camera.follow(self.player_rect.center)
+        self.camera.follow(self.player.rect.center)
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -77,19 +68,12 @@ class GameScene(Scene):
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             direction.x += 1
 
-        if direction.length_squared() > 0:
-            direction = direction.normalize()
-            self.facing_direction = direction
-
-        movement = direction * self.speed * delta_time
-        self.player_rect = move_with_collisions(
-            self.player_rect, movement, self.wall_rects
-        )
+        self.player.move(direction, delta_time, self.wall_rects)
         self._update_attack(delta_time)
         for enemy in self.enemies:
-            enemy.update(delta_time, self.player_rect.center, self.wall_rects)
+            enemy.update(delta_time, self.player.rect.center, self.wall_rects)
         self._check_pickup_collisions()
-        self.camera.follow(self.player_rect.center)
+        self.camera.follow(self.player.rect.center)
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(BACKGROUND_COLOR)
@@ -106,14 +90,14 @@ class GameScene(Scene):
         for pickup in self.pickups:
             pickup.draw(surface, self.camera.apply)
 
-        player_rect = self.camera.apply(self.player_rect)
+        player_rect = self.camera.apply(self.player.rect)
         pygame.draw.rect(surface, PLAYER_COLOR, player_rect)
 
-        if self.last_attack_rect and self.attack_timer > 0:
+        if self.player.last_attack_rect and self.player.attack_timer > 0:
             pygame.draw.rect(
                 surface,
                 PLAYER_ATTACK_COLOR,
-                self.camera.apply(self.last_attack_rect),
+                self.camera.apply(self.player.last_attack_rect),
                 width=2,
             )
 
@@ -153,57 +137,19 @@ class GameScene(Scene):
         return enemies
 
     def _update_attack(self, delta_time: float) -> None:
-        """Processa input de ataque e aplica dano em inimigos próximos."""
+        """Processa input de ataque e delega dano ao jogador."""
 
         keys = pygame.key.get_pressed()
-        self.attack_cooldown = max(0.0, self.attack_cooldown - delta_time)
-        self.attack_timer = max(0.0, self.attack_timer - delta_time)
+        self.player.update_timers(delta_time)
 
-        if keys[pygame.K_SPACE] and self.attack_cooldown == 0:
-            attack_rect = self._build_attack_rect()
-            self.last_attack_rect = attack_rect
-            self.attack_cooldown = 0.45
-            self.attack_timer = self.attack_duration
-
-            for enemy in list(self.enemies):
-                if attack_rect.colliderect(enemy.rect):
-                    alive_before = enemy.alive
-                    enemy.take_damage(self.attack_damage)
-                    if alive_before and not enemy.alive:
-                        self._spawn_loot(enemy.rect.center)
+        if keys[pygame.K_SPACE]:
+            attack_result = self.player.attack(self.enemies)
+            if attack_result:
+                _, defeated = attack_result
+                for enemy in defeated:
+                    self._spawn_loot(enemy.rect.center)
+                    if enemy in self.enemies:
                         self.enemies.remove(enemy)
-
-    def _build_attack_rect(self) -> pygame.Rect:
-        """Cria um retângulo de ataque na direção em que o player está olhando."""
-
-        horizontal = abs(self.facing_direction.x) >= abs(self.facing_direction.y)
-
-        if horizontal:
-            attack_width = self.attack_range
-            attack_height = PLAYER_SIZE
-            offset = (PLAYER_SIZE // 2 + attack_width // 2)
-            if self.facing_direction.x < 0:
-                offset *= -1
-            center = (
-                self.player_rect.centerx + offset,
-                self.player_rect.centery,
-            )
-            attack_rect = pygame.Rect(0, 0, attack_width, attack_height)
-            attack_rect.center = center
-            return attack_rect
-
-        attack_width = PLAYER_SIZE
-        attack_height = self.attack_range
-        offset = (PLAYER_SIZE // 2 + attack_height // 2)
-        if self.facing_direction.y < 0:
-            offset *= -1
-        center = (
-            self.player_rect.centerx,
-            self.player_rect.centery + offset,
-        )
-        attack_rect = pygame.Rect(0, 0, attack_width, attack_height)
-        attack_rect.center = center
-        return attack_rect
 
     def _spawn_loot(self, position: tuple[int, int]) -> None:
         """Sorteia um drop simples quando o inimigo morre."""
@@ -215,7 +161,7 @@ class GameScene(Scene):
         """Remove itens coletados e atualiza contadores."""
 
         for pickup in list(self.pickups):
-            if self.player_rect.colliderect(pickup.rect):
+            if self.player.rect.colliderect(pickup.rect):
                 if pickup.kind == "coin":
                     self.coins_collected += 1
                 else:
