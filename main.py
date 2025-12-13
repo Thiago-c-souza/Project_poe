@@ -1,10 +1,10 @@
 from core.game import Game
-from scenes.play import PlayScene
+from scenes.game_scene import GameScene
 
 
 def main() -> None:
     game = Game()
-    game.set_scene(PlayScene(game))
+    game.set_scene(GameScene(game))
     game.run()
 
 
