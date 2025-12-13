@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import pygame
+import random
 
 from core.camera import Camera
 from core.scene import Scene
 from entities.enemy import Enemy
+from entities.pickup import LootPickup
 from systems.collision import move_with_collisions
 
 TILE_SIZE = 48
@@ -44,6 +46,7 @@ class GameScene(Scene):
         self.camera = Camera(game.size)
         self.wall_rects = self._build_walls()
         self.enemies = self._spawn_enemies()
+        self.pickups: list[LootPickup] = []
         self.facing_direction = pygame.Vector2(1, 0)
         self.attack_cooldown = 0.0
         self.attack_duration = 0.1
@@ -51,6 +54,9 @@ class GameScene(Scene):
         self.attack_range = PLAYER_SIZE + 24
         self.attack_damage = 12
         self.last_attack_rect: pygame.Rect | None = None
+        self.coins_collected = 0
+        self.items_collected = 0
+        self.font = pygame.font.SysFont(None, 22)
 
     def enter(self) -> None:
         self.camera.follow(self.player_rect.center)
@@ -82,6 +88,7 @@ class GameScene(Scene):
         self._update_attack(delta_time)
         for enemy in self.enemies:
             enemy.update(delta_time, self.player_rect.center, self.wall_rects)
+        self._check_pickup_collisions()
         self.camera.follow(self.player_rect.center)
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -96,6 +103,9 @@ class GameScene(Scene):
                 color = WALL_COLOR if tile == 1 else FLOOR_COLOR
                 pygame.draw.rect(surface, color, screen_rect)
 
+        for pickup in self.pickups:
+            pickup.draw(surface, self.camera.apply)
+
         player_rect = self.camera.apply(self.player_rect)
         pygame.draw.rect(surface, PLAYER_COLOR, player_rect)
 
@@ -109,6 +119,8 @@ class GameScene(Scene):
 
         for enemy in self.enemies:
             enemy.draw(surface, self.camera.apply)
+
+        self._draw_hud(surface)
 
     def _build_walls(self) -> list[pygame.Rect]:
         walls: list[pygame.Rect] = []
@@ -155,8 +167,10 @@ class GameScene(Scene):
 
             for enemy in list(self.enemies):
                 if attack_rect.colliderect(enemy.rect):
+                    alive_before = enemy.alive
                     enemy.take_damage(self.attack_damage)
-                    if not enemy.alive:
+                    if alive_before and not enemy.alive:
+                        self._spawn_loot(enemy.rect.center)
                         self.enemies.remove(enemy)
 
     def _build_attack_rect(self) -> pygame.Rect:
@@ -190,4 +204,32 @@ class GameScene(Scene):
         attack_rect = pygame.Rect(0, 0, attack_width, attack_height)
         attack_rect.center = center
         return attack_rect
+
+    def _spawn_loot(self, position: tuple[int, int]) -> None:
+        """Sorteia um drop simples quando o inimigo morre."""
+
+        loot_type = "coin" if random.random() < 0.6 else "item"
+        self.pickups.append(LootPickup(position, loot_type))
+
+    def _check_pickup_collisions(self) -> None:
+        """Remove itens coletados e atualiza contadores."""
+
+        for pickup in list(self.pickups):
+            if self.player_rect.colliderect(pickup.rect):
+                if pickup.kind == "coin":
+                    self.coins_collected += 1
+                else:
+                    self.items_collected += 1
+                self.pickups.remove(pickup)
+
+    def _draw_hud(self, surface: pygame.Surface) -> None:
+        """Exibe contadores simples de drops no canto superior esquerdo."""
+
+        hud_lines = [
+            f"Moedas: {self.coins_collected}",
+            f"Itens: {self.items_collected}",
+        ]
+        for i, text in enumerate(hud_lines):
+            rendered = self.font.render(text, True, (230, 230, 230))
+            surface.blit(rendered, (12, 12 + i * 22))
 
