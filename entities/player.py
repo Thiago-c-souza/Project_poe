@@ -17,6 +17,7 @@ class Player:
         speed: float = 200.0,
         max_hp: float = 100.0,
         max_mana: float = 100.0,
+        skill: str | None = None,
     ) -> None:
         self.rect = pygame.Rect(0, 0, size, size)
         self.rect.center = spawn_pos
@@ -27,6 +28,7 @@ class Player:
         self.max_mana = max_mana
         self.mana = max_mana
         self.facing_direction = pygame.Vector2(1, 0)
+        self.skill = skill
 
         self.attack_cooldown = 0.0
         self.attack_duration = 0.1

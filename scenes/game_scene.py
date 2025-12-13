@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-import pygame
+import json
 import random
+from pathlib import Path
+
+import pygame
 
 from core.camera import Camera
 from core.scene import Scene
@@ -40,7 +43,10 @@ class GameScene(Scene):
 
     def __init__(self, game: "Game") -> None:
         super().__init__(game)
-        self.player = Player(self._find_spawn_point(), size=PLAYER_SIZE, speed=200)
+        self.classes = self._load_classes()
+        self.selected_class = self._default_class_name()
+        spawn_point = self._find_spawn_point()
+        self.player = self._create_player(spawn_point, self.selected_class)
         self.camera = Camera(game.size)
         self.wall_rects = self._build_walls()
         self.enemies = self._spawn_enemies()
@@ -53,8 +59,13 @@ class GameScene(Scene):
         self.camera.follow(self.player.rect.center)
 
     def handle_event(self, event: pygame.event.Event) -> None:
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            self.game.running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.game.running = False
+
+            class_name = self._class_name_from_key(event.key)
+            if class_name:
+                self._set_player_class(class_name)
 
     def update(self, delta_time: float) -> None:
         keys = pygame.key.get_pressed()
@@ -172,10 +183,57 @@ class GameScene(Scene):
         """Exibe contadores simples de drops no canto superior esquerdo."""
 
         hud_lines = [
+            f"Classe: {self.selected_class}",
             f"Moedas: {self.coins_collected}",
             f"Itens: {self.items_collected}",
         ]
         for i, text in enumerate(hud_lines):
             rendered = self.font.render(text, True, (230, 230, 230))
             surface.blit(rendered, (12, 12 + i * 22))
+
+    def _load_classes(self) -> dict[str, dict[str, float | str]]:
+        classes_path = Path(__file__).resolve().parent.parent / "data" / "classes.json"
+        with classes_path.open(encoding="utf-8") as file:
+            class_data = json.load(file)
+
+        if not class_data:
+            raise ValueError("Nenhuma classe configurada encontrada em classes.json")
+        return class_data
+
+    def _default_class_name(self) -> str:
+        if "warrior" in self.classes:
+            return "warrior"
+        return next(iter(self.classes))
+
+    def _create_player(self, spawn_pos: tuple[int, int], class_name: str) -> Player:
+        stats = self.classes.get(class_name)
+        if stats is None:
+            raise ValueError(f"Classe '{class_name}' não encontrada na configuração")
+
+        return Player(
+            spawn_pos,
+            size=PLAYER_SIZE,
+            speed=float(stats.get("speed", 200)),
+            max_hp=float(stats.get("max_hp", 100)),
+            max_mana=float(stats.get("max_mana", 100)),
+            skill=stats.get("skill"),
+        )
+
+    def _class_name_from_key(self, key: int) -> str | None:
+        available_classes = list(self.classes.keys())
+        hotkeys = {
+            pygame.K_1: available_classes[0] if len(available_classes) > 0 else None,
+            pygame.K_2: available_classes[1] if len(available_classes) > 1 else None,
+            pygame.K_3: available_classes[2] if len(available_classes) > 2 else None,
+        }
+        return hotkeys.get(key)
+
+    def _set_player_class(self, class_name: str) -> None:
+        if class_name not in self.classes or class_name == self.selected_class:
+            return
+
+        current_position = self.player.rect.center
+        self.selected_class = class_name
+        self.player = self._create_player(current_position, class_name)
+        self.camera.follow(self.player.rect.center)
 
