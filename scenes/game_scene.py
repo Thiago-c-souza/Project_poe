@@ -63,6 +63,9 @@ class GameScene(Scene):
             if event.key == pygame.K_ESCAPE:
                 self.game.running = False
 
+            if event.key == pygame.K_SPACE and self.player.attack_cooldown == 0:
+                self._perform_attack()
+
             class_name = self._class_name_from_key(event.key)
             if class_name:
                 self._set_player_class(class_name)
@@ -80,7 +83,7 @@ class GameScene(Scene):
             direction.x += 1
 
         self.player.move(direction, delta_time, self.wall_rects)
-        self._update_attack(delta_time)
+        self._update_attack_timers(delta_time)
         for enemy in self.enemies:
             enemy.update(delta_time, self.player.rect.center, self.wall_rects)
         self._check_pickup_collisions()
@@ -147,20 +150,23 @@ class GameScene(Scene):
             enemies.append(Enemy(center))
         return enemies
 
-    def _update_attack(self, delta_time: float) -> None:
-        """Processa input de ataque e delega dano ao jogador."""
+    def _update_attack_timers(self, delta_time: float) -> None:
+        """Atualiza cronômetros de ataque sem realizar ataques automáticos."""
 
-        keys = pygame.key.get_pressed()
         self.player.update_timers(delta_time)
 
-        if keys[pygame.K_SPACE]:
-            attack_result = self.player.attack(self.enemies)
-            if attack_result:
-                _, defeated = attack_result
-                for enemy in defeated:
-                    self._spawn_loot(enemy.rect.center)
-                    if enemy in self.enemies:
-                        self.enemies.remove(enemy)
+    def _perform_attack(self) -> None:
+        """Executa o ataque do jogador e processa inimigos derrotados."""
+
+        attack_result = self.player.attack(self.enemies)
+        if not attack_result:
+            return
+
+        _, defeated = attack_result
+        for enemy in defeated:
+            self._spawn_loot(enemy.rect.center)
+            if enemy in self.enemies:
+                self.enemies.remove(enemy)
 
     def _spawn_loot(self, position: tuple[int, int]) -> None:
         """Sorteia um drop simples quando o inimigo morre."""
