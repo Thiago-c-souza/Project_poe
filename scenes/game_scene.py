@@ -6,11 +6,13 @@ import pygame
 
 from core.camera import Camera
 from core.scene import Scene
+from entities.enemy import Enemy
 from systems.collision import move_with_collisions
 
 TILE_SIZE = 48
 PLAYER_SIZE = 32
 PLAYER_COLOR = (230, 230, 120)
+PLAYER_ATTACK_COLOR = (255, 200, 160)
 FLOOR_COLOR = (40, 45, 60)
 WALL_COLOR = (90, 110, 145)
 BACKGROUND_COLOR = (20, 20, 30)
@@ -41,6 +43,13 @@ class GameScene(Scene):
         self.player_rect.center = self._find_spawn_point()
         self.camera = Camera(game.size)
         self.wall_rects = self._build_walls()
+        self.enemies = self._spawn_enemies()
+        self.attack_cooldown = 0.0
+        self.attack_duration = 0.12
+        self.attack_timer = 0.0
+        self.attack_range = PLAYER_SIZE + 24
+        self.attack_damage = 12
+        self.last_attack_rect: pygame.Rect | None = None
 
     def enter(self) -> None:
         self.camera.follow(self.player_rect.center)
@@ -68,6 +77,9 @@ class GameScene(Scene):
         self.player_rect = move_with_collisions(
             self.player_rect, movement, self.wall_rects
         )
+        self._update_attack(delta_time)
+        for enemy in self.enemies:
+            enemy.update(delta_time, self.player_rect.center, self.wall_rects)
         self.camera.follow(self.player_rect.center)
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -84,6 +96,17 @@ class GameScene(Scene):
 
         player_rect = self.camera.apply(self.player_rect)
         pygame.draw.rect(surface, PLAYER_COLOR, player_rect)
+
+        if self.last_attack_rect and self.attack_timer > 0:
+            pygame.draw.rect(
+                surface,
+                PLAYER_ATTACK_COLOR,
+                self.camera.apply(self.last_attack_rect),
+                width=2,
+            )
+
+        for enemy in self.enemies:
+            enemy.draw(surface, self.camera.apply)
 
     def _build_walls(self) -> list[pygame.Rect]:
         walls: list[pygame.Rect] = []
@@ -104,4 +127,35 @@ class GameScene(Scene):
                         y * TILE_SIZE + TILE_SIZE // 2,
                     )
         return (TILE_SIZE, TILE_SIZE)
+
+    def _spawn_enemies(self) -> list[Enemy]:
+        """Cria inimigos em pontos pré-definidos do mapa."""
+
+        spawn_tiles = [(15, 8), (9, 4)]
+        enemies: list[Enemy] = []
+        for x, y in spawn_tiles:
+            center = (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2)
+            enemies.append(Enemy(center))
+        return enemies
+
+    def _update_attack(self, delta_time: float) -> None:
+        """Processa input de ataque e aplica dano em inimigos próximos."""
+
+        keys = pygame.key.get_pressed()
+        self.attack_cooldown = max(0.0, self.attack_cooldown - delta_time)
+        self.attack_timer = max(0.0, self.attack_timer - delta_time)
+
+        if keys[pygame.K_SPACE] and self.attack_cooldown == 0:
+            attack_size = self.attack_range
+            attack_rect = pygame.Rect(0, 0, attack_size, attack_size)
+            attack_rect.center = self.player_rect.center
+            self.last_attack_rect = attack_rect
+            self.attack_cooldown = 0.45
+            self.attack_timer = self.attack_duration
+
+            for enemy in list(self.enemies):
+                if attack_rect.colliderect(enemy.rect):
+                    enemy.take_damage(self.attack_damage)
+                    if not enemy.alive:
+                        self.enemies.remove(enemy)
 
