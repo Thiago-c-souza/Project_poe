@@ -119,7 +119,11 @@ const encounterTypes = [
   { type: "boss", label: "Chefe", multiplier: 2.4, xp: 70 },
 ];
 
+const STORAGE_KEY = "poe-characters";
+
 const character = {
+  id: null,
+  name: null,
   classId: null,
   level: 1,
   xp: 0,
@@ -129,7 +133,12 @@ const character = {
   selectedMap: null,
 };
 
+let savedCharacters = [];
+
 const creationStatus = document.getElementById("creation-status");
+const savedContainer = document.getElementById("saved-characters");
+const savedEmpty = document.getElementById("saved-empty");
+const nameInput = document.getElementById("name-input");
 const pointsTag = document.getElementById("points-tag");
 const levelValue = document.getElementById("level-value");
 const xpValue = document.getElementById("xp-value");
@@ -144,6 +153,7 @@ const playMapDesc = document.getElementById("play-map-desc");
 const playMapLabel = document.getElementById("play-map-label");
 const playEnemiesTag = document.getElementById("play-enemies-tag");
 const playPowerTag = document.getElementById("play-power-tag");
+const currentCharacterTag = document.getElementById("current-character-tag");
 
 const playState = {
   active: false,
@@ -153,23 +163,105 @@ const playState = {
   enemies: [],
 };
 
+function loadCharacters() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return [];
+  try {
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error("Falha ao ler banco de personagens", error);
+    return [];
+  }
+}
+
+function saveCharacters() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(savedCharacters));
+}
+
+function serializeCharacter(data) {
+  return {
+    id: data.id,
+    name: data.name,
+    classId: data.classId,
+    level: data.level,
+    xp: data.xp,
+    xpToNext: data.xpToNext,
+    points: data.points,
+    allocated: Array.from(data.allocated),
+    selectedMap: data.selectedMap || null,
+  };
+}
+
+function setCharacter(data, silentLog = false) {
+  character.id = data.id;
+  character.name = data.name;
+  character.classId = data.classId;
+  character.level = data.level;
+  character.xp = data.xp;
+  character.xpToNext = data.xpToNext;
+  character.points = data.points;
+  character.selectedMap = data.selectedMap || null;
+  character.allocated = new Set(data.allocated || []);
+
+  updateSheet();
+  renderTree();
+  renderMaps();
+  updateCurrentTag();
+  document.getElementById("run-map").disabled = false;
+
+  if (!silentLog) {
+    logMessage(`Carregado personagem ${character.name} (${classes[character.classId].label}).`);
+  }
+}
+
+function persistCurrentCharacter() {
+  if (!character.id) return;
+  const serialized = serializeCharacter(character);
+  const index = savedCharacters.findIndex((c) => c.id === character.id);
+  if (index >= 0) {
+    savedCharacters[index] = serialized;
+  } else {
+    savedCharacters.push(serialized);
+  }
+  saveCharacters();
+  renderSavedCharacters();
+}
+
 function createCharacter() {
   const selected = document.querySelector('input[name="class"]:checked');
-  if (!selected) return;
+  const name = nameInput.value.trim();
+  if (!selected || !name) {
+    creationStatus.textContent = "Informe um nome e escolha uma classe.";
+    return;
+  }
+
+  const duplicate = savedCharacters.some((c) => c.name?.toLowerCase() === name.toLowerCase());
+  if (duplicate) {
+    creationStatus.textContent = "Já existe um personagem com esse nome.";
+    return;
+  }
 
   const classId = selected.value;
+  const id = crypto.randomUUID();
   character.classId = classId;
+  character.id = id;
+  character.name = name;
   character.level = 1;
   character.xp = 0;
   character.xpToNext = 60;
   character.points = 1; // ponto inicial
   character.allocated = new Set([classes[classId].startNode]);
+  character.selectedMap = null;
 
-  creationStatus.textContent = `${classes[classId].label} criado. Você começa com 1 ponto e o nó inicial ativo.`;
-  updateSheet();
-  renderTree();
-  renderMaps();
-  logMessage("Personagem criado! Escolha um mapa e avance.");
+  const serialized = serializeCharacter(character);
+  savedCharacters.push(serialized);
+  saveCharacters();
+  renderSavedCharacters();
+
+  creationStatus.textContent = `${name} criado como ${classes[classId].label}. Você começa com 1 ponto e o nó inicial ativo.`;
+  setCharacter(serialized, true);
+  logMessage(`Personagem ${name} criado! Escolha um mapa e avance.`);
   document.getElementById("run-map").disabled = false;
 }
 
@@ -232,6 +324,7 @@ function allocateNode(nodeId) {
   logMessage(`Você alocou ${node.name}.`);
   updateSheet();
   renderTree();
+  persistCurrentCharacter();
 }
 
 function calculateStats() {
@@ -303,6 +396,7 @@ function renderMaps() {
 
 function selectMap(mapId) {
   character.selectedMap = mapId;
+  persistCurrentCharacter();
   renderMaps();
   logMessage(`Mapa escolhido: ${maps.find((m) => m.id === mapId).name}.`);
 }
@@ -324,6 +418,7 @@ function gainXp(amount) {
     levelUp();
   }
   updateSheet();
+  persistCurrentCharacter();
 }
 
 function levelUp() {
@@ -332,6 +427,7 @@ function levelUp() {
   character.xpToNext = Math.round(character.xpToNext * 1.15);
   logMessage(`Subiu para o nível ${character.level}! Você ganhou 1 ponto de árvore.`);
   renderTree();
+  persistCurrentCharacter();
 }
 
 function logMessage(message) {
@@ -499,6 +595,93 @@ function closeOverlay() {
   playState.enemies = [];
 }
 
+function renderSavedCharacters() {
+  savedContainer.innerHTML = "";
+  if (!savedCharacters.length) {
+    savedEmpty.style.display = "block";
+    return;
+  }
+  savedEmpty.style.display = "none";
+
+  savedCharacters.forEach((data) => {
+    const card = document.createElement("article");
+    card.className = "saved-card";
+
+    const header = document.createElement("header");
+    const title = document.createElement("h3");
+    title.textContent = data.name;
+    const classLabel = document.createElement("span");
+    classLabel.className = `tag ${data.classId}`;
+    classLabel.textContent = classes[data.classId].name;
+    header.append(title, classLabel);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `Nível ${data.level} · ${data.allocated.length} nós alocados`;
+
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    const loadBtn = document.createElement("button");
+    loadBtn.className = "secondary";
+    loadBtn.textContent = data.id === character.id ? "Ativo" : "Usar personagem";
+    loadBtn.disabled = data.id === character.id;
+    loadBtn.addEventListener("click", () => setCharacter(data));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "ghost";
+    deleteBtn.textContent = "Excluir";
+    deleteBtn.addEventListener("click", () => deleteCharacter(data.id));
+
+    actions.append(loadBtn, deleteBtn);
+    card.append(header, meta, actions);
+    savedContainer.appendChild(card);
+  });
+}
+
+function deleteCharacter(id) {
+  savedCharacters = savedCharacters.filter((c) => c.id !== id);
+  saveCharacters();
+  renderSavedCharacters();
+  if (character.id === id) {
+    resetCharacterState();
+  }
+}
+
+function resetCharacterState() {
+  character.id = null;
+  character.name = null;
+  character.classId = null;
+  character.level = 1;
+  character.xp = 0;
+  character.xpToNext = 60;
+  character.points = 0;
+  character.allocated = new Set();
+  character.selectedMap = null;
+  creationStatus.textContent = "Nenhum personagem ativo. Crie ou carregue um.";
+  updateSheet();
+  renderTree();
+  renderMaps();
+  updateCurrentTag();
+  document.getElementById("run-map").disabled = true;
+}
+
+function updateCurrentTag() {
+  if (!character.id) {
+    currentCharacterTag.textContent = "Nenhum personagem";
+    return;
+  }
+  currentCharacterTag.textContent = `${character.name} · ${classes[character.classId].label}`;
+}
+
+function setupJumpButtons() {
+  document.querySelectorAll("[data-jump]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = document.querySelector(button.dataset.jump);
+      if (target) target.scrollIntoView({ behavior: "smooth" });
+    });
+  });
+}
+
 // Bindings
 
 document.getElementById("create-btn").addEventListener("click", createCharacter);
@@ -506,6 +689,16 @@ document.getElementById("run-map").addEventListener("click", runMap);
 document.getElementById("close-play").addEventListener("click", closeOverlay);
 document.addEventListener("keydown", handleInput);
 
+savedCharacters = loadCharacters();
+renderSavedCharacters();
+setupJumpButtons();
+updateCurrentTag();
 renderTree();
 renderMaps();
-logMessage("Crie um personagem para começar.");
+if (savedCharacters.length) {
+  setCharacter(savedCharacters[0], true);
+  creationStatus.textContent = "Personagem carregado do banco local.";
+} else {
+  creationStatus.textContent = "Crie um personagem para começar.";
+  logMessage("Crie um personagem para começar.");
+}

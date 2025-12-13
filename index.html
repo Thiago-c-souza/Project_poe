@@ -24,6 +24,19 @@
   </header>
 
   <main>
+    <section class="panel" id="select-section">
+      <div class="panel-header">
+        <div>
+          <p class="label">Passo 0</p>
+          <h2>Escolha um personagem salvo</h2>
+          <p class="muted">Carregue um aventureiro existente ou crie um novo no passo seguinte.</p>
+        </div>
+        <span class="tag">Banco local</span>
+      </div>
+      <div id="saved-characters" class="saved-grid"></div>
+      <p class="small" id="saved-empty">Nenhum personagem salvo ainda. Crie um no passo 1.</p>
+    </section>
+
     <section class="panel" id="creation-section">
       <div class="panel-header">
         <div>
@@ -32,6 +45,10 @@
         </div>
         <span class="tag">Escolha a cor inicial</span>
       </div>
+      <label class="field">
+        <span class="label">Nome do personagem</span>
+        <input id="name-input" type="text" maxlength="24" placeholder="Ex.: Arauto das Brasas" />
+      </label>
       <div class="grid classes">
         <label class="class-card">
           <input type="radio" name="class" value="red" checked />
@@ -64,10 +81,35 @@
       </div>
     </section>
 
-    <section class="panel" id="sheet-section">
+    <section class="panel" id="manage-section">
       <div class="panel-header">
         <div>
           <p class="label">Passo 2</p>
+          <h2>Menu de gerenciamento</h2>
+          <p class="muted">Escolha se quer evoluir a árvore ou entrar direto nos mapas.</p>
+        </div>
+        <span class="tag" id="current-character-tag">Nenhum personagem</span>
+      </div>
+      <div class="manage-grid">
+        <article class="manage-card">
+          <p class="label">Árvore passiva</p>
+          <h3>Distribuir pontos</h3>
+          <p class="muted">Abra a árvore para gastar pontos e fortalecer seu personagem.</p>
+          <button class="secondary" data-jump="#sheet-section">Ir para a árvore</button>
+        </article>
+        <article class="manage-card">
+          <p class="label">Mapas</p>
+          <h3>Encarar encontros</h3>
+          <p class="muted">Escolha um mapa, derrote inimigos e ganhe experiência.</p>
+          <button class="secondary" data-jump="#maps-section">Ir para mapas</button>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="sheet-section">
+      <div class="panel-header">
+        <div>
+          <p class="label">Passo 3</p>
           <h2>Ficha e árvore passiva</h2>
         </div>
         <span class="tag" id="points-tag">Pontos: 0</span>
@@ -92,7 +134,7 @@
     <section class="panel" id="maps-section">
       <div class="panel-header">
         <div>
-          <p class="label">Passo 3</p>
+          <p class="label">Passo 4</p>
           <h2>Escolha um mapa</h2>
         </div>
         <span class="tag">3 encontros curtos</span>
