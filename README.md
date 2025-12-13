@@ -13,4 +13,10 @@ python -m http.server 8000
 
 3. Acesse no navegador: `http://localhost:8000` e interaja com a página.
 
+### Controles do mapa
+
+- Clique em "Iniciar mapa" para abrir a área jogável.
+- Use WASD ou as setas para mover o personagem colorido.
+- Pressione a barra de espaço para atacar o inimigo mais próximo em até 2 casas de distância.
+
 Nenhuma dependência adicional é necessária, os arquivos HTML/CSS/JS já entregam todo o protótipo.

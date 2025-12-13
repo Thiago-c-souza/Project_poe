@@ -137,6 +137,21 @@ const powerValue = document.getElementById("power-value");
 const treeContainer = document.getElementById("tree");
 const mapContainer = document.getElementById("maps");
 const logContainer = document.getElementById("log");
+const overlay = document.getElementById("play-overlay");
+const playArea = document.getElementById("play-area");
+const playMapTitle = document.getElementById("play-map-title");
+const playMapDesc = document.getElementById("play-map-desc");
+const playMapLabel = document.getElementById("play-map-label");
+const playEnemiesTag = document.getElementById("play-enemies-tag");
+const playPowerTag = document.getElementById("play-power-tag");
+
+const playState = {
+  active: false,
+  map: null,
+  grid: 12,
+  player: { x: 0, y: 0 },
+  enemies: [],
+};
 
 function createCharacter() {
   const selected = document.querySelector('input[name="class"]:checked');
@@ -299,25 +314,7 @@ function runMap() {
   }
 
   const map = maps.find((m) => m.id === character.selectedMap);
-  const encounters = [encounterTypes[0], encounterTypes[1], encounterTypes[2], encounterTypes[3]];
-  const { power } = calculateStats();
-
-  logMessage(`Iniciando ${map.name} (dificuldade base ${map.baseDifficulty}).`);
-
-  encounters.forEach((encounter) => {
-    const enemyPower = Math.round(map.baseDifficulty * encounter.multiplier * (0.8 + Math.random() * 0.6));
-    const playerRoll = Math.round(power * (0.85 + Math.random() * 0.35));
-
-    if (playerRoll >= enemyPower) {
-      logMessage(`Vitória contra inimigo ${encounter.label} (seu poder ${playerRoll} vs ${enemyPower}). +${encounter.xp} XP.`);
-      gainXp(encounter.xp);
-    } else {
-      logMessage(`Você sofreu dano contra inimigo ${encounter.label} (seu poder ${playerRoll} vs ${enemyPower}). Tente fortalecer a árvore.`);
-      // penalidade simples: perder um pouco de xp acumulado, sem reduzir nível
-      character.xp = Math.max(0, character.xp - Math.round(encounter.xp / 3));
-      updateSheet();
-    }
-  });
+  startInteractiveMap(map);
 }
 
 function gainXp(amount) {
@@ -344,10 +341,170 @@ function logMessage(message) {
   logContainer.scrollTop = logContainer.scrollHeight;
 }
 
+function startInteractiveMap(map) {
+  const { power } = calculateStats();
+  playState.active = true;
+  playState.map = map;
+  playState.player = { x: Math.floor(playState.grid / 2), y: Math.floor(playState.grid / 2) };
+  playState.enemies = spawnEnemies(map);
+
+  playMapLabel.textContent = `Mapa: ${map.name}`;
+  playMapTitle.textContent = map.name;
+  playMapDesc.textContent = `${map.description} Mova-se com WASD/Setas e ataque com espaço.`;
+  playPowerTag.textContent = `Poder: ${power}`;
+  overlay.classList.remove("hidden");
+
+  renderPlayfield();
+  updateEnemyTag();
+  logMessage(`Entrou em ${map.name}. Derrote todos os inimigos com WASD + Espaço.`);
+}
+
+function spawnEnemies(map) {
+  const basePositions = new Set();
+  const enemies = encounterTypes.map((encounter) => {
+    let position = { x: 0, y: 0 };
+    do {
+      position = {
+        x: Math.floor(Math.random() * playState.grid),
+        y: Math.floor(Math.random() * playState.grid),
+      };
+    } while (basePositions.has(`${position.x},${position.y}`) || (position.x === playState.player?.x && position.y === playState.player?.y));
+
+    basePositions.add(`${position.x},${position.y}`);
+    const hp = Math.round(map.baseDifficulty * encounter.multiplier * 10);
+    return {
+      id: `${encounter.type}-${position.x}-${position.y}-${Date.now()}`,
+      type: encounter.type,
+      label: encounter.label,
+      position,
+      hp,
+      maxHp: hp,
+      xp: encounter.xp,
+    };
+  });
+  return enemies;
+}
+
+function renderPlayfield() {
+  playArea.innerHTML = "";
+  const gridSize = 32;
+  playArea.style.width = `${playState.grid * gridSize}px`;
+  playArea.style.height = `${playState.grid * gridSize}px`;
+
+  const bg = document.createElement("div");
+  bg.className = "grid-bg";
+  playArea.appendChild(bg);
+
+  const player = document.createElement("div");
+  player.className = `unit player ${character.classId}`;
+  player.style.transform = `translate(${playState.player.x * gridSize + 2}px, ${playState.player.y * gridSize + 2}px)`;
+  player.textContent = "P";
+  playArea.appendChild(player);
+
+  playState.enemies.forEach((enemy) => {
+    const enemyEl = document.createElement("div");
+    enemyEl.className = `unit enemy ${enemy.type}`;
+    enemyEl.style.transform = `translate(${enemy.position.x * gridSize + 2}px, ${enemy.position.y * gridSize + 2}px)`;
+    enemyEl.textContent = enemy.label[0];
+
+    const hpBar = document.createElement("div");
+    hpBar.className = "hp-bar";
+    const hpFill = document.createElement("div");
+    hpFill.className = "hp-fill";
+    hpFill.style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+    hpBar.appendChild(hpFill);
+    enemyEl.appendChild(hpBar);
+
+    playArea.appendChild(enemyEl);
+  });
+}
+
+function updateEnemyTag() {
+  playEnemiesTag.textContent = `Inimigos: ${playState.enemies.length}`;
+}
+
+function handleInput(event) {
+  if (!playState.active) return;
+  const key = event.key.toLowerCase();
+  if (["arrowup", "w"].includes(key)) {
+    event.preventDefault();
+    movePlayer(0, -1);
+  } else if (["arrowdown", "s"].includes(key)) {
+    event.preventDefault();
+    movePlayer(0, 1);
+  } else if (["arrowleft", "a"].includes(key)) {
+    event.preventDefault();
+    movePlayer(-1, 0);
+  } else if (["arrowright", "d"].includes(key)) {
+    event.preventDefault();
+    movePlayer(1, 0);
+  } else if (key === " " || key === "spacebar") {
+    event.preventDefault();
+    performAttack();
+  }
+}
+
+function movePlayer(dx, dy) {
+  const nextX = Math.min(playState.grid - 1, Math.max(0, playState.player.x + dx));
+  const nextY = Math.min(playState.grid - 1, Math.max(0, playState.player.y + dy));
+  playState.player = { x: nextX, y: nextY };
+  renderPlayfield();
+}
+
+function performAttack() {
+  if (!playState.enemies.length) {
+    logMessage("Nenhum inimigo restante neste mapa.");
+    return;
+  }
+  const { power } = calculateStats();
+  const nearest = playState.enemies
+    .map((enemy) => ({
+      enemy,
+      distance: Math.abs(enemy.position.x - playState.player.x) + Math.abs(enemy.position.y - playState.player.y),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0];
+
+  if (!nearest || nearest.distance > 2) {
+    logMessage("Chegue mais perto do inimigo para atacar (distância máxima 2 casas).");
+    return;
+  }
+
+  const damage = Math.max(4, Math.round(power * (0.35 + Math.random() * 0.25)));
+  nearest.enemy.hp -= damage;
+  logMessage(`Ataque contra ${nearest.enemy.label} (${nearest.enemy.type}): ${damage} de dano.`);
+
+  if (nearest.enemy.hp <= 0) {
+    logMessage(`Você derrotou um ${nearest.enemy.label}! +${nearest.enemy.xp} XP.`);
+    playState.enemies = playState.enemies.filter((e) => e.id !== nearest.enemy.id);
+    gainXp(nearest.enemy.xp);
+    updateSheet();
+  }
+
+  renderPlayfield();
+  updateEnemyTag();
+
+  if (!playState.enemies.length) {
+    finishMap();
+  }
+}
+
+function finishMap() {
+  logMessage(`Mapa ${playState.map.name} concluído!`);
+  closeOverlay();
+}
+
+function closeOverlay() {
+  overlay.classList.add("hidden");
+  playState.active = false;
+  playState.enemies = [];
+}
+
 // Bindings
 
 document.getElementById("create-btn").addEventListener("click", createCharacter);
 document.getElementById("run-map").addEventListener("click", runMap);
+document.getElementById("close-play").addEventListener("click", closeOverlay);
+document.addEventListener("keydown", handleInput);
 
 renderTree();
 renderMaps();
