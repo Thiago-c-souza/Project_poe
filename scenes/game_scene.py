@@ -18,6 +18,8 @@ TILE_SIZE = 48
 PLAYER_SIZE = 32
 PLAYER_COLOR = (230, 230, 120)
 PLAYER_ATTACK_COLOR = (255, 200, 160)
+PLAYER_INVULNERABLE_COLOR = (255, 250, 230)
+PLAYER_INVULNERABLE_OUTLINE = (255, 240, 180)
 FLOOR_COLOR = (40, 45, 60)
 WALL_COLOR = (90, 110, 145)
 BACKGROUND_COLOR = (20, 20, 30)
@@ -125,7 +127,20 @@ class GameScene(Scene):
             pickup.draw(surface, self.camera.apply)
 
         player_rect = self.camera.apply(self.player.rect)
-        pygame.draw.rect(surface, PLAYER_COLOR, player_rect)
+        player_color = PLAYER_COLOR
+        outline_color = None
+        if self.player.is_invulnerable():
+            player_color = (
+                PLAYER_INVULNERABLE_COLOR
+                if self.player.invulnerability_flash_on()
+                else PLAYER_COLOR
+            )
+            outline_color = PLAYER_INVULNERABLE_OUTLINE
+
+        pygame.draw.rect(surface, player_color, player_rect)
+        if outline_color:
+            outline_rect = player_rect.inflate(6, 6)
+            pygame.draw.rect(surface, outline_color, outline_rect, width=2)
 
         if self.player.last_attack_rect and self.player.attack_timer > 0:
             pygame.draw.rect(

@@ -92,6 +92,20 @@ class Player:
         self.invulnerability_timer = self.invulnerability_duration
         return True
 
+    def is_invulnerable(self) -> bool:
+        """Indica se o jogador está dentro da janela de invulnerabilidade."""
+
+        return self.invulnerability_timer > 0
+
+    def invulnerability_flash_on(self) -> bool:
+        """Alterna o estado de flash para feedback visual durante i-frames."""
+
+        if not self.is_invulnerable():
+            return False
+
+        flash_interval = 0.1
+        return int(self.invulnerability_timer / flash_interval) % 2 == 0
+
     def attack(self, enemies: list["Enemy"]) -> tuple[pygame.Rect, list["Enemy"]] | None:
         """Realiza o ataque na direção atual e aplica dano nos inimigos."""
 
