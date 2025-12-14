@@ -28,6 +28,9 @@ class Player:
         self.hp = max_hp
         self.max_mana = max_mana
         self.mana = max_mana
+        self.alive = True
+        self.invulnerability_duration = 0.4
+        self.invulnerability_timer = 0.0
         self.facing_direction = pygame.Vector2(1, 0)
         self.skill = skill
 
@@ -56,19 +59,38 @@ class Player:
     ) -> None:
         """Move o jogador e avança temporizadores em um único passo."""
 
+        if not self.alive:
+            self.vel = pygame.Vector2()
+            self.update_timers(delta_time)
+            return
+
         self.move(direction, delta_time, colliders)
         self.update_timers(delta_time)
 
     def update_timers(self, delta_time: float) -> None:
-        """Avança temporizadores relacionados ao ataque."""
+        """Avança temporizadores relacionados ao ataque e invulnerabilidade."""
 
         self.attack_cooldown = max(0.0, self.attack_cooldown - delta_time)
         self.attack_timer = max(0.0, self.attack_timer - delta_time)
+        self.invulnerability_timer = max(0.0, self.invulnerability_timer - delta_time)
 
     def can_attack(self) -> bool:
         """Indica se o ataque básico está pronto para uso."""
 
-        return self.attack_cooldown == 0
+        return self.alive and self.attack_cooldown == 0
+
+    def take_damage(self, amount: float) -> bool:
+        """Aplica dano respeitando i-frames e retorna se o golpe foi aceito."""
+
+        if not self.alive or self.invulnerability_timer > 0:
+            return False
+
+        self.hp = max(0.0, self.hp - amount)
+        if self.hp == 0:
+            self.alive = False
+
+        self.invulnerability_timer = self.invulnerability_duration
+        return True
 
     def attack(self, enemies: list["Enemy"]) -> tuple[pygame.Rect, list["Enemy"]] | None:
         """Realiza o ataque na direção atual e aplica dano nos inimigos."""
