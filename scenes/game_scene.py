@@ -319,14 +319,21 @@ class GameScene(Scene):
             if overlap.width == 0 or overlap.height == 0:
                 continue
 
-            push_vector = pygame.Vector2()
-            if overlap.width < overlap.height:
-                direction = 1 if enemy.rect.centerx >= self.player.rect.centerx else -1
-                push_vector.x = (overlap.width + 1) * direction
-            else:
-                direction = 1 if enemy.rect.centery >= self.player.rect.centery else -1
-                push_vector.y = (overlap.height + 1) * direction
+            direction = pygame.Vector2(self.player.rect.center) - pygame.Vector2(
+                enemy.rect.center
+            )
+            if direction.length_squared() == 0:
+                direction = pygame.Vector2(1, 0)
 
-            enemy.rect = move_with_collisions(enemy.rect, push_vector * 0.7, self.wall_rects)
-            self.player.rect = move_with_collisions(self.player.rect, push_vector * -0.3, self.wall_rects)
+            direction = direction.normalize()
+            push_amount = min(overlap.width, overlap.height) + 1
+            enemy_push = move_with_collisions(
+                enemy.rect, -direction * push_amount * 0.7, self.wall_rects
+            )
+            player_push = move_with_collisions(
+                self.player.rect, direction * push_amount * 0.3, self.wall_rects
+            )
+
+            enemy.rect = enemy_push
+            self.player.rect = player_push
 
