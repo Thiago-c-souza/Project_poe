@@ -316,7 +316,10 @@ class GameScene(Scene):
                 continue
 
             resolved_player, resolved_enemy = soft_separate(
-                self.player.rect, enemy.rect, self.wall_rects
+                self.player.rect,
+                enemy.rect,
+                self.wall_rects,
+                push_share_a=0.3,
             )
 
             self.player.rect = resolved_player

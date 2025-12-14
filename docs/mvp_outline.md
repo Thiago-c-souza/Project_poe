@@ -35,4 +35,9 @@ loot e classes configuráveis.
 - Raridade: normal/mágico/raro + mods simples (+vida, +dano, +atributo).
 - Boss simples com padrão de ataque claro.
 - UI mínima: barras de vida/mana, hotbar e indicador de loot.
+- Colisões "soft" entre player e inimigos: dividir o empurrão de forma desigual
+  deixa o player mais pesado e melhora o controle. Recomendações:
+  - 70/30 (inimigo cede mais) como padrão para MVP.
+  - 80/20 para um feeling mais "PoE" ainda.
+  - 50/50 se quiser a resposta mais realista/simétrica.
 - **Saída:** ciclo de recompensa viciante já perceptível no MVP.
