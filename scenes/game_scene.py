@@ -55,6 +55,8 @@ class GameScene(Scene):
         self.coins_collected = 0
         self.items_collected = 0
         self.font = pygame.font.SysFont(None, 22)
+        self.title_font = pygame.font.SysFont(None, 72)
+        self.game_over = False
 
     def enter(self) -> None:
         self.camera.follow(self.player.rect.center)
@@ -65,12 +67,19 @@ class GameScene(Scene):
                 self.game.running = False
             elif event.key == pygame.K_SPACE:
                 self.attack_requested = True
+            elif event.key == pygame.K_r and self.game_over:
+                self._restart_scene()
 
             class_name = self._class_name_from_key(event.key)
             if class_name:
                 self._set_player_class(class_name)
 
     def update(self, delta_time: float) -> None:
+        if self.game_over:
+            self.player.vel = pygame.Vector2()
+            self.camera.follow(self.player.rect.center)
+            return
+
         self.player.update_timers(delta_time)
 
         direction = pygame.Vector2(0, 0)
@@ -96,6 +105,8 @@ class GameScene(Scene):
             enemy.update(delta_time, self.player.rect.center, self.wall_rects)
         self._check_player_damage()
         self._check_pickup_collisions()
+        if not self.player.alive:
+            self.game_over = True
         self.camera.follow(self.player.rect.center)
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -128,6 +139,8 @@ class GameScene(Scene):
             enemy.draw(surface, self.camera.apply)
 
         self._draw_hud(surface)
+        if self.game_over:
+            self._draw_game_over(surface)
 
     def _build_walls(self) -> list[pygame.Rect]:
         walls: list[pygame.Rect] = []
@@ -203,6 +216,16 @@ class GameScene(Scene):
             rendered = self.font.render(text, True, (230, 230, 230))
             surface.blit(rendered, (12, 12 + i * 22))
 
+    def _draw_game_over(self, surface: pygame.Surface) -> None:
+        title = self.title_font.render("Game Over", True, (255, 80, 80))
+        prompt = self.font.render("Pressione R para reiniciar", True, (230, 230, 230))
+
+        title_rect = title.get_rect(center=(self.game.size[0] // 2, self.game.size[1] // 2 - 20))
+        prompt_rect = prompt.get_rect(center=(self.game.size[0] // 2, self.game.size[1] // 2 + 24))
+
+        surface.blit(title, title_rect)
+        surface.blit(prompt, prompt_rect)
+
     def _load_classes(self) -> dict[str, dict[str, float | str]]:
         classes_path = Path(__file__).resolve().parent.parent / "data" / "classes.json"
         with classes_path.open(encoding="utf-8") as file:
@@ -259,4 +282,9 @@ class GameScene(Scene):
         for enemy in self.enemies:
             if enemy.try_hit(self.player):
                 break
+
+    def _restart_scene(self) -> None:
+        """Reinicia a cena do jogo do zero."""
+
+        self.game.set_scene(GameScene(self.game))
 
