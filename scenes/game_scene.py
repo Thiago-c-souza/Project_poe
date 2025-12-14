@@ -13,6 +13,7 @@ from core.scene import Scene
 from entities.enemy import Enemy
 from entities.player import Player
 from entities.pickup import LootPickup
+from systems.collision import move_with_collisions
 
 TILE_SIZE = 48
 PLAYER_SIZE = 32
@@ -105,6 +106,7 @@ class GameScene(Scene):
 
         for enemy in self.enemies:
             enemy.update(delta_time, self.player.rect.center, self.wall_rects)
+        self._resolve_player_enemy_overlaps()
         self._check_player_damage()
         self._check_pickup_collisions()
         if not self.player.alive:
@@ -302,4 +304,29 @@ class GameScene(Scene):
         """Reinicia a cena do jogo do zero."""
 
         self.game.set_scene(GameScene(self.game))
+
+    def _resolve_player_enemy_overlaps(self) -> None:
+        """Empurra suavemente player e inimigos quando se sobrepõem."""
+
+        if not self.player.alive:
+            return
+
+        for enemy in self.enemies:
+            if not enemy.alive or not enemy.rect.colliderect(self.player.rect):
+                continue
+
+            overlap = self.player.rect.clip(enemy.rect)
+            if overlap.width == 0 or overlap.height == 0:
+                continue
+
+            push_vector = pygame.Vector2()
+            if overlap.width < overlap.height:
+                direction = 1 if enemy.rect.centerx >= self.player.rect.centerx else -1
+                push_vector.x = (overlap.width + 1) * direction
+            else:
+                direction = 1 if enemy.rect.centery >= self.player.rect.centery else -1
+                push_vector.y = (overlap.height + 1) * direction
+
+            enemy.rect = move_with_collisions(enemy.rect, push_vector * 0.7, self.wall_rects)
+            self.player.rect = move_with_collisions(self.player.rect, push_vector * -0.3, self.wall_rects)
 
