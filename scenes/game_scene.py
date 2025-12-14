@@ -51,6 +51,7 @@ class GameScene(Scene):
         self.wall_rects = self._build_walls()
         self.enemies = self._spawn_enemies()
         self.pickups: list[LootPickup] = []
+        self.attack_requested = False
         self.coins_collected = 0
         self.items_collected = 0
         self.font = pygame.font.SysFont(None, 22)
@@ -62,9 +63,8 @@ class GameScene(Scene):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.game.running = False
-
-            if event.key == pygame.K_SPACE and self.player.can_attack():
-                self._perform_attack()
+            elif event.key == pygame.K_SPACE:
+                self.attack_requested = True
 
             class_name = self._class_name_from_key(event.key)
             if class_name:
@@ -81,6 +81,10 @@ class GameScene(Scene):
             direction.x -= 1
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             direction.x += 1
+
+        if self.attack_requested and self.player.can_attack():
+            self._perform_attack()
+        self.attack_requested = False
 
         self.player.update(direction, delta_time, self.wall_rects)
         for enemy in self.enemies:
