@@ -50,11 +50,24 @@ class Player:
         self.vel = movement
         self.rect = move_with_collisions(self.rect, movement, colliders)
 
+    def update(
+        self, direction: pygame.Vector2, delta_time: float, colliders: list[pygame.Rect]
+    ) -> None:
+        """Move o jogador e avança temporizadores em um único passo."""
+
+        self.move(direction, delta_time, colliders)
+        self.update_timers(delta_time)
+
     def update_timers(self, delta_time: float) -> None:
         """Avança temporizadores relacionados ao ataque."""
 
         self.attack_cooldown = max(0.0, self.attack_cooldown - delta_time)
         self.attack_timer = max(0.0, self.attack_timer - delta_time)
+
+    def can_attack(self) -> bool:
+        """Indica se o ataque básico está pronto para uso."""
+
+        return self.attack_cooldown == 0
 
     def attack(self, enemies: list["Enemy"]) -> tuple[pygame.Rect, list["Enemy"]] | None:
         """Realiza o ataque na direção atual e aplica dano nos inimigos."""

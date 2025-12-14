@@ -63,7 +63,7 @@ class GameScene(Scene):
             if event.key == pygame.K_ESCAPE:
                 self.game.running = False
 
-            if event.key == pygame.K_SPACE and self.player.attack_cooldown == 0:
+            if event.key == pygame.K_SPACE and self.player.can_attack():
                 self._perform_attack()
 
             class_name = self._class_name_from_key(event.key)
@@ -82,8 +82,7 @@ class GameScene(Scene):
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             direction.x += 1
 
-        self.player.move(direction, delta_time, self.wall_rects)
-        self._update_attack_timers(delta_time)
+        self.player.update(direction, delta_time, self.wall_rects)
         for enemy in self.enemies:
             enemy.update(delta_time, self.player.rect.center, self.wall_rects)
         self._check_pickup_collisions()
@@ -149,11 +148,6 @@ class GameScene(Scene):
             center = (x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2)
             enemies.append(Enemy(center))
         return enemies
-
-    def _update_attack_timers(self, delta_time: float) -> None:
-        """Atualiza cronômetros de ataque sem realizar ataques automáticos."""
-
-        self.player.update_timers(delta_time)
 
     def _perform_attack(self) -> None:
         """Executa o ataque do jogador e processa inimigos derrotados."""
