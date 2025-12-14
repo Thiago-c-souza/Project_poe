@@ -13,7 +13,7 @@ from core.scene import Scene
 from entities.enemy import Enemy
 from entities.player import Player
 from entities.pickup import LootPickup
-from systems.collision import move_with_collisions
+from systems.collision import move_with_collisions, soft_separate
 
 TILE_SIZE = 48
 PLAYER_SIZE = 32
@@ -315,25 +315,10 @@ class GameScene(Scene):
             if not enemy.alive or not enemy.rect.colliderect(self.player.rect):
                 continue
 
-            overlap = self.player.rect.clip(enemy.rect)
-            if overlap.width == 0 or overlap.height == 0:
-                continue
-
-            direction = pygame.Vector2(self.player.rect.center) - pygame.Vector2(
-                enemy.rect.center
-            )
-            if direction.length_squared() == 0:
-                direction = pygame.Vector2(1, 0)
-
-            direction = direction.normalize()
-            push_amount = min(overlap.width, overlap.height) + 1
-            enemy_push = move_with_collisions(
-                enemy.rect, -direction * push_amount * 0.7, self.wall_rects
-            )
-            player_push = move_with_collisions(
-                self.player.rect, direction * push_amount * 0.3, self.wall_rects
+            resolved_player, resolved_enemy = soft_separate(
+                self.player.rect, enemy.rect, self.wall_rects
             )
 
-            enemy.rect = enemy_push
-            self.player.rect = player_push
+            self.player.rect = resolved_player
+            enemy.rect = resolved_enemy
 
