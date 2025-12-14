@@ -89,6 +89,7 @@ class GameScene(Scene):
         self.player.update(direction, delta_time, self.wall_rects)
         for enemy in self.enemies:
             enemy.update(delta_time, self.player.rect.center, self.wall_rects)
+        self._check_player_damage()
         self._check_pickup_collisions()
         self.camera.follow(self.player.rect.center)
 
@@ -188,6 +189,8 @@ class GameScene(Scene):
 
         hud_lines = [
             f"Classe: {self.selected_class}",
+            f"Vida: {int(self.player.hp)}/{int(self.player.max_hp)}",
+            f"Mana: {int(self.player.mana)}/{int(self.player.max_mana)}",
             f"Moedas: {self.coins_collected}",
             f"Itens: {self.items_collected}",
         ]
@@ -241,4 +244,15 @@ class GameScene(Scene):
         self.selected_class = class_name
         self.player = self._create_player(current_position, class_name)
         self.camera.follow(self.player.rect.center)
+
+    def _check_player_damage(self) -> None:
+        """Aplica dano por contato dos inimigos, respeitando i-frames."""
+
+        if not self.player.alive:
+            return
+
+        for enemy in self.enemies:
+            if enemy.alive and enemy.rect.colliderect(self.player.rect):
+                if self.player.take_damage(enemy.contact_damage):
+                    break
 

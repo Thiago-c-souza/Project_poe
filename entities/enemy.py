@@ -18,6 +18,7 @@ class Enemy:
         size: int = 28,
         speed: float = 140.0,
         health: int = 30,
+        contact_damage: float = 10.0,
     ) -> None:
         self.rect = pygame.Rect(0, 0, size, size)
         self.rect.center = spawn_pos
@@ -25,6 +26,7 @@ class Enemy:
         self.max_health = health
         self.health = float(health)
         self.alive = True
+        self.contact_damage = contact_damage
 
     def update(
         self,
