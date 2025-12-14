@@ -17,6 +17,7 @@ class Player:
         speed: float = 200.0,
         max_hp: float = 100.0,
         max_mana: float = 100.0,
+        attack_damage: float = 12.0,
         skill: str | None = None,
     ) -> None:
         self.rect = pygame.Rect(0, 0, size, size)
@@ -34,7 +35,7 @@ class Player:
         self.attack_duration = 0.1
         self.attack_timer = 0.0
         self.attack_range = size + 24
-        self.attack_damage = 12
+        self.attack_damage = attack_damage
         self.last_attack_rect: pygame.Rect | None = None
 
     def move(

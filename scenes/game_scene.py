@@ -214,8 +214,9 @@ class GameScene(Scene):
             spawn_pos,
             size=PLAYER_SIZE,
             speed=float(stats.get("speed", 200)),
-            max_hp=float(stats.get("max_hp", 100)),
-            max_mana=float(stats.get("max_mana", 100)),
+            max_hp=float(stats.get("hp", 100)),
+            max_mana=float(stats.get("mana", 100)),
+            attack_damage=float(stats.get("damage", 12)),
             skill=stats.get("skill"),
         )
 
