@@ -252,7 +252,6 @@ class GameScene(Scene):
             return
 
         for enemy in self.enemies:
-            if enemy.alive and enemy.rect.colliderect(self.player.rect):
-                if self.player.take_damage(enemy.contact_damage):
-                    break
+            if enemy.try_hit(self.player):
+                break
 
