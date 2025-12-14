@@ -192,7 +192,7 @@ class GameScene(Scene):
     def _perform_attack(self) -> None:
         """Executa o ataque do jogador e processa inimigos derrotados."""
 
-        attack_result = self.player.attack(self.enemies)
+        attack_result = self.player.attack(self.enemies, self.wall_rects)
         if not attack_result:
             return
 

@@ -106,7 +106,9 @@ class Player:
         flash_interval = 0.1
         return int(self.invulnerability_timer / flash_interval) % 2 == 0
 
-    def attack(self, enemies: list["Enemy"]) -> tuple[pygame.Rect, list["Enemy"]] | None:
+    def attack(
+        self, enemies: list["Enemy"], colliders: list[pygame.Rect]
+    ) -> tuple[pygame.Rect, list["Enemy"]] | None:
         """Realiza o ataque na direção atual e aplica dano nos inimigos."""
 
         if self.attack_cooldown > 0:
@@ -119,13 +121,28 @@ class Player:
 
         defeated: list["Enemy"] = []
         for enemy in list(enemies):
-            if attack_rect.colliderect(enemy.rect):
-                alive_before = enemy.alive
-                enemy.take_damage(self.attack_damage)
-                if alive_before and not enemy.alive:
-                    defeated.append(enemy)
+            if not attack_rect.colliderect(enemy.rect):
+                continue
+
+            alive_before = enemy.alive
+            enemy.take_damage(self.attack_damage)
+            self._push_enemy(enemy, colliders)
+
+            if alive_before and not enemy.alive:
+                defeated.append(enemy)
 
         return attack_rect, defeated
+
+    def _push_enemy(self, enemy: "Enemy", colliders: list[pygame.Rect]) -> None:
+        """Empurra o inimigo atingido e corrige contra paredes em seguida."""
+
+        knockback_distance = 16
+        direction = pygame.Vector2(enemy.rect.center) - pygame.Vector2(self.rect.center)
+        if direction.length_squared() == 0:
+            direction = self.facing_direction
+
+        movement = direction.normalize() * knockback_distance
+        enemy.rect = move_with_collisions(enemy.rect, movement, colliders)
 
     def _build_attack_rect(self) -> pygame.Rect:
         """Cria um retângulo de ataque na direção em que o player está olhando."""
