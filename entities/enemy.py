@@ -1,9 +1,14 @@
 """Entidade simples de inimigo com IA de perseguição."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pygame
 
 from systems.collision import move_with_collisions
+
+if TYPE_CHECKING:  # pragma: no cover - apenas para type checkers
+    from entities.player import Player
 
 ENEMY_COLOR = (200, 90, 90)
 ENEMY_DEAD_COLOR = (80, 60, 60)
@@ -19,6 +24,7 @@ class Enemy:
         speed: float = 140.0,
         health: int = 30,
         contact_damage: float = 10.0,
+        hit_cooldown: float = 0.6,
     ) -> None:
         self.rect = pygame.Rect(0, 0, size, size)
         self.rect.center = spawn_pos
@@ -27,6 +33,8 @@ class Enemy:
         self.health = float(health)
         self.alive = True
         self.contact_damage = contact_damage
+        self.hit_cooldown = hit_cooldown
+        self.hit_timer = 0.0
 
     def update(
         self,
@@ -35,6 +43,8 @@ class Enemy:
         colliders: list[pygame.Rect],
     ) -> None:
         """Move em direção ao player enquanto estiver vivo."""
+
+        self._update_timers(delta_time)
 
         if not self.alive:
             return
@@ -46,6 +56,21 @@ class Enemy:
         direction = direction.normalize()
         movement = direction * self.speed * delta_time
         self.rect = move_with_collisions(self.rect, movement, colliders)
+
+    def try_hit(self, player: "Player") -> bool:
+        """Tenta aplicar dano de contato respeitando cooldown e i-frames."""
+
+        if not self.alive or self.hit_timer > 0:
+            return False
+
+        if not self.rect.colliderect(player.rect):
+            return False
+
+        if player.take_damage(self.contact_damage):
+            self.hit_timer = self.hit_cooldown
+            return True
+
+        return False
 
     def take_damage(self, amount: float) -> None:
         """Reduz vida e marca como morto quando chega a 0."""
@@ -77,4 +102,9 @@ class Enemy:
             inner_width = int(bar_width * health_ratio)
             inner_rect = pygame.Rect(bar_x, bar_y, inner_width, bar_height)
             pygame.draw.rect(surface, (150, 220, 120), inner_rect)
+
+    def _update_timers(self, delta_time: float) -> None:
+        """Avança temporizadores internos relacionados ao ataque."""
+
+        self.hit_timer = max(0.0, self.hit_timer - delta_time)
 
