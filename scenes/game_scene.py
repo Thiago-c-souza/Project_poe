@@ -71,22 +71,27 @@ class GameScene(Scene):
                 self._set_player_class(class_name)
 
     def update(self, delta_time: float) -> None:
-        keys = pygame.key.get_pressed()
-        direction = pygame.Vector2(0, 0)
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            direction.y -= 1
-        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            direction.y += 1
-        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            direction.x -= 1
-        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            direction.x += 1
+        self.player.update_timers(delta_time)
 
-        if self.attack_requested and self.player.can_attack():
-            self._perform_attack()
+        direction = pygame.Vector2(0, 0)
+        if self.player.alive:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_w] or keys[pygame.K_UP]:
+                direction.y -= 1
+            if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+                direction.y += 1
+            if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+                direction.x -= 1
+            if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+                direction.x += 1
+
+            if self.attack_requested and self.player.can_attack():
+                self._perform_attack()
+            self.player.move(direction, delta_time, self.wall_rects)
+        else:
+            self.player.vel = pygame.Vector2()
         self.attack_requested = False
 
-        self.player.update(direction, delta_time, self.wall_rects)
         for enemy in self.enemies:
             enemy.update(delta_time, self.player.rect.center, self.wall_rects)
         self._check_player_damage()
